@@ -4,7 +4,7 @@ CRM для кейса «ИТ Школа» хакатона «Лидеры циф
 Визуализирует многоэтапный процесс взаимодействия с вузами-партнёрами,
 ведёт учёт договоров, задач и комментариев по каждому взаимодействию.
 
-[![CI](https://github.com/Pavel1778/rtk-crm/actions/workflows/ci.yml/badge.svg)](https://github.com/Pavel1778/rtk-crm/actions/workflows/ci.yml)
+[![CI](https://github.com/ForgeLabHub/ForgeRTKCRM/actions/workflows/ci.yml/badge.svg)](https://github.com/ForgeLabHub/ForgeRTKCRM/actions/workflows/ci.yml)
 
 ## Прототип
 
@@ -96,7 +96,7 @@ docs/             DEPLOYMENT.md, STACK.md, USER_GUIDE.md,
 Compose — Python и Node на машине не требуются.
 
 ```bash
-git clone https://github.com/Pavel1778/rtk-crm.git rtk-crm
+git clone https://github.com/ForgeLabHub/ForgeRTKCRM.git rtk-crm
 cd rtk-crm
 cp .env.example .env
 # заполнить .env — см. ниже
@@ -119,10 +119,27 @@ GigaChat приложение запускается: вкладка «Свод�
 Проверка готовности:
 
 ```bash
+make doctor        # окружение до запуска: инструменты, .env, порты
 docker compose ps
 curl http://localhost:8000/healthz
 curl http://localhost:8000/readyz
+make smoke-test    # healthz, readyz, /docs, /openapi.json, фронтенд
 ```
+
+## Команды разработки
+
+| Команда | Что делает |
+| --- | --- |
+| `make doctor` | проверка инструментов, версий, `.env`, портов; ничего не меняет |
+| `make test` | pytest на SQLite, внешняя СУБД не нужна |
+| `make lint typecheck` | ruff + mypy |
+| `make alembic-check` | модели и миграции согласованы |
+| `make compose-up` / `make compose-down` | стек; `SERVICES="backend frontend"` для минимума |
+| `make docs-check` | полнота документации и спецификаций модулей |
+| `make verify` | всё перечисленное сразу |
+
+Матрица «утверждение → команда → CI»: [docs/verification/matrix.md](docs/verification/matrix.md).
+Точка входа в документацию: [docs/index.md](docs/index.md).
 
 Адреса после запуска:
 
