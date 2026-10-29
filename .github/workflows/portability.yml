@@ -1,0 +1,172 @@
+name: Portability
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  schedule:
+    - cron: "0 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portability-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    name: Documentation is complete and linked
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Structural checks
+        run: ./scripts/docs-check.sh
+
+  alembic-fresh:
+    name: Migrations on an empty database
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rtk
+          POSTGRES_PASSWORD: rtk
+          POSTGRES_DB: rtk_fresh
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rtk"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Apply migrations from scratch
+        env:
+          DATABASE_URL: postgresql+asyncpg://rtk:rtk@127.0.0.1:5432/rtk_fresh
+        run: |
+          cd backend
+          python -m alembic upgrade head
+          python -m alembic current
+
+  alembic-upgrade-path:
+    name: Re-applying migrations is a no-op
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rtk
+          POSTGRES_PASSWORD: rtk
+          POSTGRES_DB: rtk_upgrade
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rtk"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Upgrade twice and verify the revision
+        env:
+          DATABASE_URL: postgresql+asyncpg://rtk:rtk@127.0.0.1:5432/rtk_upgrade
+          SECRET_KEY: ci-secret-key-not-used-in-production
+        run: |
+          cd backend
+          python -m alembic upgrade head
+          python -m alembic upgrade head   # повторный запуск обязан быть no-op
+          python -m alembic current | tail -1
+
+  backup-restore:
+    name: Backup, restore and smoke test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rtk
+          POSTGRES_PASSWORD: rtk
+          POSTGRES_DB: rtk_source
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rtk"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Prepare a populated database
+        env:
+          DATABASE_URL: postgresql+asyncpg://rtk:rtk@127.0.0.1:5432/rtk_source
+          SECRET_KEY: ci-secret-key-not-used-in-production
+          SEED_DEMO_DATA: "true"
+        run: |
+          cd backend && python -m alembic upgrade head
+          cd .. && python scripts/seed.py
+      - name: Back up and restore
+        run: |
+          mkdir -p backups
+          PGPASSWORD=rtk pg_dump -h 127.0.0.1 -U rtk -Fc rtk_source > backups/rtk.dump
+          test -s backups/rtk.dump
+          PGPASSWORD=rtk createdb -h 127.0.0.1 -U rtk rtk_restored
+          PGPASSWORD=rtk pg_restore -h 127.0.0.1 -U rtk --no-owner --no-privileges \
+            -d rtk_restored backups/rtk.dump
+          PGPASSWORD=rtk psql -h 127.0.0.1 -U rtk -d rtk_restored -tAc \
+            "select count(*) from interactions" | tee /tmp/count
+          test "$(cat /tmp/count)" -gt 0
+
+  compose-smoke:
+    name: Full stack smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare the environment
+        run: |
+          cp .env.example .env
+          printf 'SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> .env
+          printf 'MINIO_ROOT_PASSWORD=%s\n' "ci-only-minio-password" >> .env
+          printf 'KEYCLOAK_ADMIN_PASSWORD=%s\n' "ci-only-keycloak-password" >> .env
+      - name: Start the minimal stack
+        run: docker compose up -d --build backend frontend nginx
+      - name: Wait for readiness
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8000/healthz >/dev/null 2>&1; then
+              curl -fsS http://127.0.0.1:8000/readyz >/dev/null 2>&1 && exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs --tail=200 backend; exit 1
+      - name: Smoke test
+        run: ./scripts/smoke-test.sh http://127.0.0.1:8000 http://127.0.0.1:3000
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail=300
+
+  config-without-secrets:
+    name: Compose fails closed without required secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Missing SECRET_KEY must stop compose
+        run: |
+          cp .env.example .env
+          sed -i 's/^SECRET_KEY=.*/SECRET_KEY=/' .env
+          if docker compose config >/dev/null 2>&1; then
+            echo "compose принял конфигурацию без SECRET_KEY" >&2; exit 1
+          fi
