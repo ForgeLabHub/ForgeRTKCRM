@@ -4,17 +4,17 @@
 # площадки. Запускается на self-hosted worker (тег self-hosted) — так сборка
 # идёт на своей ВМ в Yandex Cloud, без внешних раннеров.
 #
+# Источник истины по составу проверок — .github/workflows/ci.yml. Этот файл
+# должен повторять его шаги; расхождение считается дефектом (см.
+# docs/verification/matrix.md).
+#
 # Формат: https://sourcecraft.dev/portal/docs/ru/sourcecraft/operations/ci-cd
 
 on:
   push:
     branches:
-      - main
-      - dev
+      - "**"
   pull_request:
-    branches:
-      - main
-      - dev
 
 workflows:
   ci:

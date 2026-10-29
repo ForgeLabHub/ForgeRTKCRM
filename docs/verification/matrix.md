@@ -13,6 +13,8 @@
 | Запуск без интеграций | GigaChat/Keycloak/S3 — опции | `make compose-up SERVICES="backend frontend"` | `portability.yml` → `config-without-secrets` |
 | Документация согласована | ссылки живые, спецификации модулей полны | `make docs-check` | `portability.yml` → `docs` |
 | Проверка хоста | окружение пригодно до запуска | `make doctor` | локально |
+| Проверки запускаются на каждой ветке | работа в ветке не доживает до merge непроверенной | `push` в любую ветку + PR | `ci.yml`, `portability.yml` (`branches: ["**"]`) |
+| Зеркало CI не разошлось с GitHub | результат не зависит от площадки | сравнение шагов `.sourcecraft/ci.yaml` с `ci.yml` | вручную при изменении CI |
 
 ## Что не проверяется автоматически
 

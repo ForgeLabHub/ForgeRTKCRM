@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    # Проверяем каждую ветку, а не только main/dev: иначе работа в ветке не
+    # проверяется вообще, а сюрприз появляется на merge.
+    branches: ["**"]
   pull_request:
-    branches: [main, dev]
 
 concurrency:
   group: ci-${{ github.ref }}
