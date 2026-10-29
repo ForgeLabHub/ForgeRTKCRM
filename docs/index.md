@@ -9,6 +9,7 @@
 | Модель данных | [architecture/er-model.md](architecture/er-model.md), [database/migrations.md](database/migrations.md) |
 | Роли и вход | [ADMIN_GUIDE.md](ADMIN_GUIDE.md), [KEYCLOAK.md](KEYCLOAK.md) |
 | Что делает функция | [modules/](modules/) |
+| Что заимствовать в другой проект | [modules/module-map.md](modules/module-map.md) |
 | Ошибки API | [ERROR_CODES.md](ERROR_CODES.md), [api/conventions.md](api/conventions.md) |
 | Эксплуатация и прод | [operations/deployment.md](operations/deployment.md), [operations/monitoring.md](operations/monitoring.md) |
 | Безопасность | [SECURITY.md](SECURITY.md), [security/SAST-SCA.md](security/SAST-SCA.md) |
