@@ -250,6 +250,11 @@ Render, frontend — статика на Vercel, база — Supabase PostgreSQ
 
 ## Документация
 
+Каждый документ есть на русском и английском: русские версии — в `docs/`, английские — в
+`docs/en/`, PDF обоих языков — в `docs/pdf/{ru,en}`. Паритет проверяется машиной:
+`make docs-check` (цели `lint`, `docs-pdf`, `test` описаны в `Makefile`). Карта модулей для
+заимствования кода: [docs/modules/module-map.md](docs/modules/module-map.md).
+
 - [rtk-crm-documentation.pdf](docs/rtk-crm-documentation.pdf) — единый PDF со всей документацией
 - [RTK-CRM-LCT2026.pptx](docs/presentation/RTK-CRM-LCT2026.pptx) — презентация, 11 слайдов по шаблону ЛЦТ
 - [RTK-CRM-LCT2026.pdf](docs/presentation/RTK-CRM-LCT2026.pdf) — та же презентация в PDF
