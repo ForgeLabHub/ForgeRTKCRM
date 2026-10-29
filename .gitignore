@@ -98,3 +98,6 @@ docs/presentation/build_presentation.py
 scripts/capture_*.py
 *.bak
 *.tmp
+
+# Состояние forge.sh/forge.bat: PID-файлы и логи запусков
+.run/
